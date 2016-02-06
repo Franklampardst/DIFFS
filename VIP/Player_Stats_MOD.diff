@@ -1,0 +1,325 @@
+diff --git a/src/server/game/Entities/Player/Player.cpp b/src/server/game/Entities/Player/Player.cpp
+index 30fddb8..3ac5cdd 100644
+-- a/src/server/game/Entities/Player/Player.cpp
+++ b/src/server/game/Entities/Player/Player.cpp
+@@ -44,6 +44,7 @@
+#include "GridNotifiersImpl.h"
+#include "Group.h"
+#include "GroupMgr.h"
+#include "Grumboz_VIP_Core.h"
+#include "Guild.h"
+#include "GuildMgr.h"
+#include "InstanceSaveMgr.h"
+@@ -3139,7 +3140,12 @@ void Player::GiveLevel(uint8 level)
+
+void Player::InitTalentForLevel()
+{
+    uint8 level = getLevel();
+	uint32 acct_id = GetSession()->GetAccountId();
+	uint8 Pvip = VIP::GetVIP(acct_id);
+	uint8 VIP_TP_BONUS = VIP::GetTALENTBONUS();
+	uint8 TPMOD = (Pvip * VIP_TP_BONUS);
+	
+	uint8 level = getLevel();
+    // talents base at level diff (talents = level - 9 but some can be used already)
+    if (level < 10)
+    {
+@@ -3161,8 +3167,8 @@ void Player::InitTalentForLevel()
+        uint32 talentPointsForLevel = CalculateTalentsPoints();
+
+        // if used more that have then reset
+        if (m_usedTalentCount > talentPointsForLevel)
+        {
+		if (m_usedTalentCount >(talentPointsForLevel + TPMOD))
+		{
+            if (!GetSession()->HasPermission(rbac::RBAC_PERM_SKIP_CHECK_MORE_TALENTS_THAN_ALLOWED))
+                ResetTalents(true);
+            else
+@@ -3170,8 +3176,8 @@ void Player::InitTalentForLevel()
+        }
+        // else update amount of free points
+        else
+            SetFreeTalentPoints(talentPointsForLevel - m_usedTalentCount);
+    }
+			SetFreeTalentPoints((talentPointsForLevel + TPMOD) - m_usedTalentCount);
+	}
+
+    if (!GetSession()->PlayerLoading())
+        SendTalentsInfoData(false);                         // update at client
+@@ -4349,7 +4355,12 @@ void Player::_SaveSpellCooldowns(SQLTransaction& trans)
+
+uint32 Player::ResetTalentsCost() const
+{
+    // The first time reset costs 1 gold
+	uint32 acct_id = GetSession()->GetAccountId();
+	uint8 Pvip = VIP::GetVIP(acct_id);
+	uint8 VIP_TP_BONUS = VIP::GetTALENTBONUS();
+	uint8 TPMOD = (Pvip * VIP_TP_BONUS);
+	
+	// The first time reset costs 1 gold
+    if (m_resetTalentsCost < 1*GOLD)
+        return 1*GOLD;
+    // then 5 gold
+@@ -4392,8 +4403,8 @@ bool Player::ResetTalents(bool no_cost)
+
+    if (m_usedTalentCount == 0)
+    {
+        SetFreeTalentPoints(talentPointsForLevel);
+        return false;
+		SetFreeTalentPoints(talentPointsForLevel + TPMOD);
+		return false;
+    }
+
+    uint32 cost = 0;
+@@ -4454,7 +4465,7 @@ bool Player::ResetTalents(bool no_cost)
+    _SaveSpells(trans);
+    CharacterDatabase.CommitTransaction(trans);
+
+    SetFreeTalentPoints(talentPointsForLevel);
+	SetFreeTalentPoints(talentPointsForLevel + TPMOD);
+
+    if (!no_cost)
+    {
+@@ -7804,7 +7815,12 @@ void Player::_ApplyItemMods(Item* item, uint8 slot, bool apply)
+
+void Player::_ApplyItemBonuses(ItemTemplate const* proto, uint8 slot, bool apply, bool only_level_scale /*= false*/)
+{
+    if (slot >= INVENTORY_SLOT_BAG_END || !proto)
+	float VIP_OFFSET = VIP::GetVIPOFFSET();
+	uint32 acctId = GetSession()->GetAccountId();
+	uint8 Pvip = VIP::GetVIP(acctId);
+	float MOD = (Pvip * VIP_OFFSET);
+	
+	if (slot >= INVENTORY_SLOT_BAG_END || !proto)
+        return;
+
+    ScalingStatDistributionEntry const* ssd = proto->ScalingStatDistribution ? sScalingStatDistributionStore.LookupEntry(proto->ScalingStatDistribution) : NULL;
+@@ -7846,148 +7862,148 @@ void Player::_ApplyItemBonuses(ItemTemplate const* proto, uint8 slot, bool apply
+        switch (statType)
+        {
+            case ITEM_MOD_MANA:
+                HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_MANA, BASE_VALUE, float(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HEALTH:                           // modify HP
+                HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_HEALTH, BASE_VALUE, float(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_AGILITY:                          // modify agility
+                HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_STAT_AGILITY, BASE_VALUE, float(val + (val * MOD)), apply);
+                ApplyStatBuffMod(STAT_AGILITY, float(val), apply);
+                break;
+            case ITEM_MOD_STRENGTH:                         //modify strength
+                HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_STAT_STRENGTH, BASE_VALUE, float(val + (val * MOD)), apply);
+                ApplyStatBuffMod(STAT_STRENGTH, float(val), apply);
+                break;
+            case ITEM_MOD_INTELLECT:                        //modify intellect
+                HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_STAT_INTELLECT, BASE_VALUE, float(val + (val * MOD)), apply);
+                ApplyStatBuffMod(STAT_INTELLECT, float(val), apply);
+                break;
+            case ITEM_MOD_SPIRIT:                           //modify spirit
+                HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_STAT_SPIRIT, BASE_VALUE, float(val + (val * MOD)), apply);
+                ApplyStatBuffMod(STAT_SPIRIT, float(val), apply);
+                break;
+            case ITEM_MOD_STAMINA:                          //modify stamina
+                HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(val), apply);
+                ApplyStatBuffMod(STAT_STAMINA, float(val), apply);
+				HandleStatModifier(UNIT_MOD_STAT_STAMINA, BASE_VALUE, float(val + (val * MOD)), apply);
+				ApplyStatBuffMod(STAT_STAMINA, float(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_DEFENSE_SKILL_RATING:
+                ApplyRatingMod(CR_DEFENSE_SKILL, int32(val), apply);
+				ApplyRatingMod(CR_DEFENSE_SKILL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_DODGE_RATING:
+                ApplyRatingMod(CR_DODGE, int32(val), apply);
+				ApplyRatingMod(CR_DODGE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_PARRY_RATING:
+                ApplyRatingMod(CR_PARRY, int32(val), apply);
+				ApplyRatingMod(CR_PARRY, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_BLOCK_RATING:
+                ApplyRatingMod(CR_BLOCK, int32(val), apply);
+				ApplyRatingMod(CR_BLOCK, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_MELEE_RATING:
+                ApplyRatingMod(CR_HIT_MELEE, int32(val), apply);
+				ApplyRatingMod(CR_HIT_MELEE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_RANGED_RATING:
+                ApplyRatingMod(CR_HIT_RANGED, int32(val), apply);
+				ApplyRatingMod(CR_HIT_RANGED, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_SPELL_RATING:
+                ApplyRatingMod(CR_HIT_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_HIT_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_MELEE_RATING:
+                ApplyRatingMod(CR_CRIT_MELEE, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_MELEE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_RANGED_RATING:
+                ApplyRatingMod(CR_CRIT_RANGED, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_RANGED, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_SPELL_RATING:
+                ApplyRatingMod(CR_CRIT_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_TAKEN_MELEE_RATING:
+                ApplyRatingMod(CR_HIT_TAKEN_MELEE, int32(val), apply);
+				ApplyRatingMod(CR_HIT_TAKEN_MELEE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_TAKEN_RANGED_RATING:
+                ApplyRatingMod(CR_HIT_TAKEN_RANGED, int32(val), apply);
+				ApplyRatingMod(CR_HIT_TAKEN_RANGED, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_TAKEN_SPELL_RATING:
+                ApplyRatingMod(CR_HIT_TAKEN_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_HIT_TAKEN_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_TAKEN_MELEE_RATING:
+                ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_TAKEN_RANGED_RATING:
+                ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_TAKEN_SPELL_RATING:
+                ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HASTE_MELEE_RATING:
+                ApplyRatingMod(CR_HASTE_MELEE, int32(val), apply);
+				ApplyRatingMod(CR_HASTE_MELEE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HASTE_RANGED_RATING:
+                ApplyRatingMod(CR_HASTE_RANGED, int32(val), apply);
+				ApplyRatingMod(CR_HASTE_RANGED, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HASTE_SPELL_RATING:
+                ApplyRatingMod(CR_HASTE_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_HASTE_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_RATING:
+                ApplyRatingMod(CR_HIT_MELEE, int32(val), apply);
+                ApplyRatingMod(CR_HIT_RANGED, int32(val), apply);
+                ApplyRatingMod(CR_HIT_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_HIT_MELEE, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_HIT_RANGED, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_HIT_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_RATING:
+                ApplyRatingMod(CR_CRIT_MELEE, int32(val), apply);
+                ApplyRatingMod(CR_CRIT_RANGED, int32(val), apply);
+                ApplyRatingMod(CR_CRIT_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_MELEE, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_CRIT_RANGED, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_CRIT_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HIT_TAKEN_RATING:
+                ApplyRatingMod(CR_HIT_TAKEN_MELEE, int32(val), apply);
+                ApplyRatingMod(CR_HIT_TAKEN_RANGED, int32(val), apply);
+                ApplyRatingMod(CR_HIT_TAKEN_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_HIT_TAKEN_MELEE, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_HIT_TAKEN_RANGED, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_HIT_TAKEN_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_CRIT_TAKEN_RATING:
+                ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val), apply);
+                ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val), apply);
+                ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_RESILIENCE_RATING:
+                ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val), apply);
+                ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val), apply);
+                ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_MELEE, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_RANGED, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_CRIT_TAKEN_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HASTE_RATING:
+                ApplyRatingMod(CR_HASTE_MELEE, int32(val), apply);
+                ApplyRatingMod(CR_HASTE_RANGED, int32(val), apply);
+                ApplyRatingMod(CR_HASTE_SPELL, int32(val), apply);
+				ApplyRatingMod(CR_HASTE_MELEE, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_HASTE_RANGED, int32(val + (val * MOD)), apply);
+				ApplyRatingMod(CR_HASTE_SPELL, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_EXPERTISE_RATING:
+                ApplyRatingMod(CR_EXPERTISE, int32(val), apply);
+				ApplyRatingMod(CR_EXPERTISE, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_ATTACK_POWER:
+                HandleStatModifier(UNIT_MOD_ATTACK_POWER, TOTAL_VALUE, float(val), apply);
+                HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_ATTACK_POWER, TOTAL_VALUE, float(val + (val * MOD)), apply);
+				HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_RANGED_ATTACK_POWER:
+                HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(val), apply);
+				HandleStatModifier(UNIT_MOD_ATTACK_POWER_RANGED, TOTAL_VALUE, float(val + (val * MOD)), apply);
+                break;
+//            case ITEM_MOD_FERAL_ATTACK_POWER:
+//                ApplyFeralAPBonus(int32(val), apply);
+//                break;
+            case ITEM_MOD_MANA_REGENERATION:
+                ApplyManaRegenBonus(int32(val), apply);
+				ApplyManaRegenBonus(int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_ARMOR_PENETRATION_RATING:
+                ApplyRatingMod(CR_ARMOR_PENETRATION, int32(val), apply);
+				ApplyRatingMod(CR_ARMOR_PENETRATION, int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_SPELL_POWER:
+                ApplySpellPowerBonus(int32(val), apply);
+				ApplySpellPowerBonus(int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_HEALTH_REGEN:
+                ApplyHealthRegenBonus(int32(val), apply);
+				ApplyHealthRegenBonus(int32(val + (val * MOD)), apply);
+                break;
+            case ITEM_MOD_SPELL_PENETRATION:
+                ApplySpellPenetrationBonus(val, apply);
+				ApplySpellPenetrationBonus(val + (val * MOD), apply);
+                break;
+            case ITEM_MOD_BLOCK_VALUE:
+                HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(val), apply);
+				HandleBaseModValue(SHIELD_BLOCK_VALUE, FLAT_MOD, float(val + (val * MOD)), apply);
+                break;
+            // deprecated item mods
+            case ITEM_MOD_SPELL_HEALING_DONE:
+@@ -8091,7 +8107,12 @@ void Player::_ApplyItemBonuses(ItemTemplate const* proto, uint8 slot, bool apply
+
+void Player::_ApplyWeaponDamage(uint8 slot, ItemTemplate const* proto, ScalingStatValuesEntry const* ssv, bool apply)
+{
+    WeaponAttackType attType = BASE_ATTACK;
+	float VIP_OFFSET = VIP::GetVIPOFFSET();
+	uint32 acctId = GetSession()->GetAccountId();
+	uint8 Pvip = VIP::GetVIP(acctId);
+	float MOD = (Pvip * VIP_OFFSET);
+	
+	WeaponAttackType attType = BASE_ATTACK;
+    float damage = 0.0f;
+
+    if (slot == EQUIPMENT_SLOT_RANGED && (
+@@ -8105,8 +8126,8 @@ void Player::_ApplyWeaponDamage(uint8 slot, ItemTemplate const* proto, ScalingSt
+        attType = OFF_ATTACK;
+    }
+
+    float minDamage = proto->Damage[0].DamageMin;
+    float maxDamage = proto->Damage[0].DamageMax;
+	float minDamage = proto->Damage[0].DamageMin + (proto->Damage[0].DamageMin / MOD);
+	float maxDamage = proto->Damage[0].DamageMax + (proto->Damage[0].DamageMax / MOD);
+
+    // If set dpsMod in ScalingStatValue use it for min (70% from average), max (130% from average) damage
+    if (ssv)
